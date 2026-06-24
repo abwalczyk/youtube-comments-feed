@@ -44,16 +44,21 @@ def parse_args():
     p.add_argument("--tier", choices=TIERS.keys(), default="all")
     p.add_argument("--feed-repo-dir", type=Path, default=None,
                    help="Path to local feed repo clone (default: temp dir)")
+    p.add_argument("--cookies", type=Path, default=None,
+                   help="Path to Netscape cookies.txt for YouTube auth")
     return p.parse_args()
 
 
-def discover_videos(tier):
+def discover_videos(tier, cookies=None):
     start, end = TIERS[tier]
     print(f"Discovering videos from channel ...")
+    cmd = [sys.executable, "-m", "yt_dlp",
+           "--flat-playlist", "--print", "%(id)s\t%(title)s"]
+    if cookies:
+        cmd += ["--cookies", str(cookies)]
+    cmd.append(CHANNEL_URL)
     result = subprocess.run(
-        [sys.executable, "-m", "yt_dlp",
-         "--flat-playlist", "--print", "%(id)s\t%(title)s",
-         CHANNEL_URL],
+        cmd,
         capture_output=True, text=True, timeout=120,
     )
     if result.returncode != 0:
@@ -72,14 +77,17 @@ def discover_videos(tier):
     return sliced
 
 
-def fetch_comments(video_id, work_dir):
+def fetch_comments(video_id, work_dir, cookies=None):
     out_template = str(work_dir / video_id)
+    cmd = [sys.executable, "-m", "yt_dlp",
+           "--skip-download", "--write-comments",
+           "--no-write-thumbnail", "--no-write-description",
+           "-o", out_template]
+    if cookies:
+        cmd += ["--cookies", str(cookies)]
+    cmd.append(f"https://www.youtube.com/watch?v={video_id}")
     result = subprocess.run(
-        [sys.executable, "-m", "yt_dlp",
-         "--skip-download", "--write-comments",
-         "--no-write-thumbnail", "--no-write-description",
-         "-o", out_template,
-         f"https://www.youtube.com/watch?v={video_id}"],
+        cmd,
         capture_output=True, text=True, timeout=300,
     )
     if result.returncode != 0:
@@ -234,7 +242,7 @@ def main():
     existing_guids = load_existing_guids(feed_file)
     print(f"Existing feed has {len(existing_guids)} items")
 
-    videos = discover_videos(args.tier)
+    videos = discover_videos(args.tier, cookies=args.cookies)
 
     all_comments = []
     new_count = 0
@@ -246,7 +254,7 @@ def main():
             title = video["title"]
             print(f"[{i+1}/{len(videos)}] {title} ({vid})")
 
-            comments = fetch_comments(vid, work_path)
+            comments = fetch_comments(vid, work_path, cookies=args.cookies)
             new_in_video = sum(1 for c in comments if c["comment_id"] not in existing_guids)
             all_comments.extend(comments)
             new_count += new_in_video

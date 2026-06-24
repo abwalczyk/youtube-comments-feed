@@ -9,6 +9,7 @@
     repo_url: "git@github.com:ansible-tmm/youtube-comments-feed.git"
     work_dir: "/tmp/youtube-comments-scrape"
     feed_repo_dir: "/tmp/youtube-comments-feed"
+    cookies_file: "{{ work_dir }}/cookies.txt"
 
   tasks:
     - name: Ensure pip dependencies are installed
@@ -66,9 +67,24 @@
         dest: "{{ work_dir }}/pull_comments.py"
         mode: "0755"
 
+    - name: Write YouTube cookies file
+      ansible.builtin.copy:
+        content: "{{ youtube_cookies }}"
+        dest: "{{ cookies_file }}"
+        mode: "0600"
+      when: youtube_cookies is defined and youtube_cookies | length > 0
+
+    - name: Build scraper command
+      ansible.builtin.set_fact:
+        scraper_cmd: >-
+          python3 {{ work_dir }}/pull_comments.py
+          --tier {{ tier }}
+          --feed-repo-dir {{ feed_repo_dir }}
+          {{ ('--cookies ' + cookies_file) if (youtube_cookies is defined and youtube_cookies | length > 0) else '' }}
+
     - name: Run comment scraper
       ansible.builtin.command:
-        cmd: "python3 {{ work_dir }}/pull_comments.py --tier {{ tier }} --feed-repo-dir {{ feed_repo_dir }}"
+        cmd: "{{ scraper_cmd }}"
       register: scrape_result
       changed_when: "'Feed published' in scrape_result.stdout"
 
