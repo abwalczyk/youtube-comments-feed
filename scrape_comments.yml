@@ -6,10 +6,10 @@
 
   vars:
     tier: "all"
-    repo_url: "https://github.com/abwalczyk/youtube-comments-feed.git"
+    repo_url: "https://github.com/ansible-tmm/youtube-comments-feed.git"
     work_dir: "/tmp/youtube-comments-scrape"
     feed_repo_dir: "/tmp/youtube-comments-feed"
-    script_url: "https://raw.githubusercontent.com/abwalczyk/youtube-comments-feed/main/pull_comments.py"
+    script_url: "https://raw.githubusercontent.com/ansible-tmm/youtube-comments-feed/main/pull_comments.py"
 
   tasks:
     - name: Ensure pip dependencies are installed
