@@ -9,10 +9,6 @@
     repo_url: "git@github.com:ansible-tmm/youtube-comments-feed.git"
     work_dir: "/tmp/youtube-comments-scrape"
     feed_repo_dir: "/tmp/youtube-comments-feed"
-    deploy_key_path: "~/.ssh/yt-comments-deploy"
-
-  environment:
-    GIT_SSH_COMMAND: "ssh -i {{ deploy_key_path }} -o StrictHostKeyChecking=accept-new"
 
   tasks:
     - name: Ensure pip dependencies are installed
@@ -28,7 +24,7 @@
         dest: "{{ feed_repo_dir }}"
         version: main
         force: false
-        key_file: "{{ deploy_key_path }}"
+        accept_newhostkey: true
 
     - name: Create work directory
       ansible.builtin.file:
