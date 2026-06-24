@@ -1,0 +1,43 @@
+---
+- name: Scrape YouTube comments and publish RSS feed
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    tier: "all"
+    repo_url: "https://github.com/abwalczyk/youtube-comments-feed.git"
+    work_dir: "/tmp/youtube-comments-scrape"
+    feed_repo_dir: "/tmp/youtube-comments-feed"
+    script_url: "https://raw.githubusercontent.com/abwalczyk/youtube-comments-feed/main/pull_comments.py"
+
+  tasks:
+    - name: Ensure pip dependencies are installed
+      ansible.builtin.pip:
+        name:
+          - yt-dlp
+          - certifi
+        state: present
+
+    - name: Clone or update feed repo
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ feed_repo_dir }}"
+        version: main
+        force: false
+
+    - name: Copy scraper script to work directory
+      ansible.builtin.copy:
+        src: pull_comments.py
+        dest: "{{ work_dir }}/pull_comments.py"
+        mode: "0755"
+
+    - name: Run comment scraper
+      ansible.builtin.command:
+        cmd: "python3 {{ work_dir }}/pull_comments.py --tier {{ tier }} --feed-repo-dir {{ feed_repo_dir }}"
+      register: scrape_result
+      changed_when: "'Feed published' in scrape_result.stdout"
+
+    - name: Show scraper output
+      ansible.builtin.debug:
+        var: scrape_result.stdout_lines
