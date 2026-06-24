@@ -18,6 +18,20 @@
           - certifi
         state: present
 
+    - name: Check if deno is installed
+      ansible.builtin.command:
+        cmd: deno --version
+      register: deno_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Install deno for yt-dlp JavaScript extraction
+      ansible.builtin.shell:
+        cmd: curl -fsSL https://deno.land/install.sh | sh
+      environment:
+        DENO_INSTALL: /usr/local
+      when: deno_check.rc != 0
+
     - name: Check if feed repo exists
       ansible.builtin.stat:
         path: "{{ feed_repo_dir }}/.git"
