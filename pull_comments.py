@@ -28,8 +28,14 @@ sys.stdout.reconfigure(line_buffering=True)
 CHANNEL_URL = "https://www.youtube.com/@AnsibleAutomation/videos"
 FEED_REPO = "git@github.com:ansible-tmm/youtube-comments-feed.git"
 FEED_URL = "https://ansible-tmm.github.io/youtube-comments-feed/feed.xml"
+DEPLOY_KEY = Path.home() / ".ssh" / "yt-comments-deploy"
 DELAY_BETWEEN_VIDEOS = 2
 MAX_FEED_ITEMS = 500
+
+if DEPLOY_KEY.exists() and "GIT_SSH_COMMAND" not in os.environ:
+    os.environ["GIT_SSH_COMMAND"] = (
+        f"ssh -i {DEPLOY_KEY} -o StrictHostKeyChecking=accept-new"
+    )
 
 TIERS = {
     "hot": (0, 10),
@@ -53,7 +59,8 @@ def discover_videos(tier, cookies=None):
     start, end = TIERS[tier]
     print(f"Discovering videos from channel ...")
     cmd = [sys.executable, "-m", "yt_dlp",
-           "--flat-playlist", "--print", "%(id)s\t%(title)s"]
+           "--flat-playlist", "--print", "%(id)s\t%(title)s",
+           "--js-runtimes", "nodejs,deno"]
     if cookies:
         cmd += ["--cookies", str(cookies)]
     cmd.append(CHANNEL_URL)
@@ -82,6 +89,7 @@ def fetch_comments(video_id, work_dir, cookies=None):
     cmd = [sys.executable, "-m", "yt_dlp",
            "--skip-download", "--write-comments",
            "--no-write-thumbnail", "--no-write-description",
+           "--ignore-errors", "--js-runtimes", "nodejs,deno",
            "-o", out_template]
     if cookies:
         cmd += ["--cookies", str(cookies)]
